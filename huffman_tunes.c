@@ -2,41 +2,10 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "huffman.h"
-#define BASE_NOTE 69 /* A440 */
-#define A440 69
-#define TUNE_TERMINATOR "\n"
-#define STRING_TERMINATOR "\t"
-#define STRING_TOKENS 1
-#define NORMAL_TOKENS 0
+#include "huffman_tunes.h"
+
 
 /* Tune related functions */
-
-/* The context inside a tune */
-typedef struct tune_context
-{
-    /* All timings in microseconds */
-    uint32_t bar_duration;
-    char title[256];
-    char rhythm[32];
-    int token_mode; /* Can be STRING_TOKENS or NORMAL_TOKENS */
-    char *token_string; /* pointer to a string to write the next string tokens to */
-    uint32_t current_duration; /* Note duration in microseconds */
-    uint8_t current_note; /* MIDI note number */
-    uint8_t meter_denominator;
-    uint8_t meter_numerator;
-    char key[5];
-    char chord[7];
-    uint32_t bar_count;
-    uint32_t bar_start_time; /* the time at the start of the current bar */
-    uint32_t bar_end_time; /* the time at the end of the current bar */
-    uint32_t note_start_time; /* the time at the start of the current note */
-    uint32_t note_end_time; /* the time at the start of the current note */
-    
-
-    uint8_t note_on; /* 1 = if not currently on */
-    uint32_t time; /* the current time */
-
-} tune_context;
 
 /* The current tune */
 tune_context context;
@@ -88,26 +57,49 @@ void seek_to_tune(uint32_t ix, uint32_t *tune_index, huffman_buffer *buffer)
     buffer->pos = tune_index[ix+1];    
 }
 
+tune_context *new_context()
+{
+    /* Create a new tune context */
+    tune_context *context = malloc(sizeof(tune_context));
+    context->meta = malloc(sizeof(tune_metadata));
+    context->parser = malloc(sizeof(parser_context));
+    /* Allocate space for the chord type and full chord name */
+    context->meta->chord_type = malloc(sizeof(chord_type));    
+    reset_context(context);
+    return context;
+}
+
+void free_context(tune_context *context)
+{
+    /* Free the memory associated with a tune context */
+    free(context->meta->chord_type->chord);
+    free(context->meta->chord_type);
+    free(context->meta);
+    free(context->parser);
+    free(context);
+}
+
 /* Reset the context to a new, blank tune, at the start */
 void reset_context(tune_context *context)
 {    
-    strcpy(context->title, "Untitled");
-    strcpy(context->key, "cmaj");
-    strcpy(context->chord, "");
-    context->bar_duration = 0;
+    strcpy(context->meta->title, "Untitled");
+    strcpy(context->meta->key, "cmaj");
+    strcpy(context->meta->chord, "");
+    context->meta->meter_denominator = 4;
+    context->meta->meter_numerator = 4;
+    context->meta->bar_duration = 0;
+    context->parser->token_mode = NORMAL_TOKENS;
+    context->parser->token_string = "";
+    
     context->current_duration = 0;
     context->current_note = BASE_NOTE;
-    context->meter_denominator = 4;
-    context->meter_numerator = 4;
     context->bar_count = 0;
     context->bar_start_time = 0;
     context->bar_end_time = 0;
-    context->token_mode = NORMAL_TOKENS;
-    context->token_string = "";
-    context->note_on = 0;
     context->time = 0;
     context->note_start_time = 0;
     context->note_end_time = 0;
+    context->note_on = 0;
 }
 
 /* Update the context to trigger notes */
@@ -121,11 +113,13 @@ void trigger_note(tune_context *context, int rest)
     context->note_end_time = context->time + context->current_duration;
 }
 
+/* Take a huffman token and append it to the current target, building
+up a string. */
 void string_token(tune_context *context, char *target)
 {
-    context->token_mode = STRING_TOKENS;
+    context->parser->token_mode = STRING_TOKENS;
     *target = '\0';
-    context->token_string = target;     
+    context->parser->token_string = target;     
 }
 
 void decode_token(char *token, tune_context *context)
@@ -135,52 +129,56 @@ void decode_token(char *token, tune_context *context)
     char *p = token+1;
     
     /* In STRING_TOKENS mode, we just append the token to the target string */
-    if(context->token_mode == STRING_TOKENS) {
+    if(context->parser->token_mode == STRING_TOKENS) {
         /* end of tokens? */
         if(*token==STRING_TERMINATOR)
-            context->token_mode = NORMAL_TOKENS;
+            context->parser->token_mode = NORMAL_TOKENS;
         else        
-            strcat(context->token_string, token);                                    
+            strcat(context->parser->token_string, token);                                    
         return;
     }
 
     /* otherwise we are in NORMAL_TOKENS mode */
     switch(leading) {
+        /* Metadata fields.
+        These tokens update context->meta.
+        */
         case '*':
             /* Text field 
             In this case, we need to switch to string tokens
             until we find an end of string token marker.
             */        
             if(!strcmp(token, "title")) {
-                   string_token(context, context->title);        
+                   string_token(context, context->meta->title);        
             }
             else if(!strcmp(token, "rhythm")) {
-                string_token(context, context->rhythm);                        
+                string_token(context, context->meta->rhythm);                        
             }            
             break;
         case '&':
             /* Key */
-            strcpy(context->key, p);
+            strcpy(context->meta->key, p);
             break;
         case '#':
             /* Chord */
-            strcpy(context->chord, p);
+            strcpy(context->meta->chord, p);
             break;
         case '^':
             /* Bar duration */
-            context->bar_duration = atoi(p);
+            context->meta->bar_duration = atoi(p);
+            context->current_duration = context->meta->bar_duration * BASE_DURATION;            
             break;
         case '%':
             /* Meter */            
-            context->meter_numerator = atoi(strtok(p, '/'));
-            context->meter_denominator = atoi(strtok(NULL, '/'));
+            context->meta->meter_numerator = atoi(strtok(p, '/'));
+            context->meta->meter_denominator = atoi(strtok(NULL, '/'));
             break;
         case '|':
             /* Bar */
             context-> bar_count++;
             context->bar_start_time = context->time;
-            context->bar_end_time = context->time + context->bar_duration;
-            break;
+            context->bar_end_time = context->time + context->meta->bar_duration;
+            break;        
         /* These indicate that a note should be played */
         case '.':
             /* Same note as last */
@@ -207,5 +205,51 @@ void decode_token(char *token, tune_context *context)
         default:
             printf("Error: unknown token type %c\n", leading);
             break;
+    }
+}
+
+void *decode_chord(char *name, chord_type *out)
+{
+    /* Chords are in the form <base><type>, where
+    base is a note name (like A, B, Ds, Cb) and
+    type is a type name (like maj, min, 7)
+    For example, Amaj or Dsmin7. Write the full 
+    chord data to out, where each offset is a note increment
+    from C. -1 means no note to be played.   
+    */
+    /* Search the note names for the base */
+    note_offset *note = note_offsets;
+    chord_type *chord = chord_types;
+    int i;
+    while(note->note_name) {
+        if(!strncmp(note->note_name, name, strlen(note->note_name))) {
+            /* Found the base note */
+            break;
+        }
+        note++;
+    }
+    if(note->note_name == NULL) {
+        printf("Error: unknown note name %s\n", name);
+        return NULL;
+    }
+    /* Search the chord types for the type */
+    
+    while(chord->chord_type) {
+        if(!strncmp(chord->chord_type, name+strlen(note->note_name), strlen(chord->chord_type))) {
+            /* Found the chord type */
+            break;
+        }
+        chord++;
+    }
+    if(chord->chord_type == NULL) {
+        printf("Error: unknown chord type %s\n", name);
+        return NULL;
+    }
+    /* Write new chord to out */
+    strcpy(out->chord_type, name);    
+    for(i=0; i<5; i++) {
+        if(chord->chord[i]==-1)
+            break;
+        out->chord[i] = note->offset + chord->chord[i];
     }
 }

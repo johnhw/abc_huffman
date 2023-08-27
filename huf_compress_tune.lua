@@ -142,6 +142,7 @@ function code_stream_tune(seq, tracked_state, stream)
                 update_state(seq, tracked_state, 0, v.note.play_bars , true)                    
             elseif v.event=='timing_change' then   
                 tracked_state.bar_length = math.floor(v.timing.bar_length)
+                tracked_state.duration = base_duration -- reset to base duration
                 
             end 
         end 
