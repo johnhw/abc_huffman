@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include "huffman.h"
 #include "huffman_tunes.h"
 
@@ -179,11 +180,7 @@ void decode_token(char *token, tune_context *context)
             context->bar_start_time = context->time;
             context->bar_end_time = context->time + context->meta->bar_duration;
             break;        
-        /* These indicate that a note should be played */
-        case '.':
-            /* Same note as last */
-            trigger_note(context, 0);
-            break;
+        /* These indicate that a note should be played */        
         case '+':
             /* Note, increasing pitch */
             context->current_note += atoi(p);

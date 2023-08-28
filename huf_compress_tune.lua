@@ -49,12 +49,10 @@ function update_state(seq, tracked_state, note, duration, is_rest)
     else
         local delta = note - tracked_state.semitones 
         -- otherwise, we might need to stuff in pitch shifts                
-        if delta>0 then                
+        if delta>=0 then                
             table.insert(seq, "+"..delta)                        
         elseif delta<0 then         
             table.insert(seq, ""..delta)        
-        else
-            table.insert(seq, ".")
         end
         tracked_state.delta = delta 
         tracked_state.semitones = note
@@ -102,11 +100,85 @@ included_elements = {
     note=true,
     rest=true,
     meter=true,
-    timing_change=true,
+    timing_change=false,
     rhythm=false,
     title=true,
-
+    debug_mode=false, 
 }
+
+-- `--debug` dump the raw symbol stream, and the huffman table data to stdout
+-- `--all-text` preserve all text in the compressed file
+-- - `--no-text` remove all text from the compressed file
+-- - `--title/--no-title` preserve the title in the compressed file
+-- - `--rhythm/--no-rhythm` preserve the rhythm in the compressed file
+-- - `--meter/--no-meter` preserve the meter in the compressed file
+-- - `--key/--no-key` preserve the key in the compressed file
+-- - `--bars/--no-bars` preserve the bar lines in the compressed file
+-- - `--chords/--no-chords` preserve the chords in the compressed file
+-- - `--timing/--no-timing` preserve the timing changes in the compressed file
+-- - `--bare` turn off everything but the tune itself (no metadata at all)
+-- - `--full` turn on everything (all metadata, including all text)
+
+function parse_command_line_args()
+   -- set included_elements according to flags    
+    for v, k in pairs(arg) do 
+        -- find '--' prefixed arguments
+        if k:sub(1,2)=='--' then 
+            -- remove '--' prefix
+            k = k:sub(3)
+            flag = true 
+            -- remove 'no-' prefix
+            if k:sub(1,3)=='no-' then 
+                k = k:sub(4)
+                flag = false 
+            end 
+
+            if k=='debug' then 
+                included_elements.debug = flag
+            elseif k=='all-text' then 
+                included_elements.field_text = flag
+                included_elements.title = flag
+                included_elements.rhythm = flag
+            elseif k=='meter' then 
+                included_elements.meter = flag
+            elseif k=='key' then
+                included_elements.key = flag
+            elseif k=='bars' then
+                included_elements.bar = flag
+            elseif k=='chords' then
+                included_elements.chord = flag
+            elseif k=='title' then
+                included_elements.title = flag
+            elseif k=='rhythm' then
+                included_elements.rhythm = flag
+            elseif k=='timing' then
+                included_elements.timing_change = flag
+            elseif k=='bare' then
+                included_elements.field_text = false
+                included_elements.title = false
+                included_elements.rhythm = false
+                included_elements.meter = false
+                included_elements.key = false
+                included_elements.bar = false
+                included_elements.chord = false
+            elseif k=='text' and not flag then 
+                included_elements.field_text = false
+                included_elements.title = false
+                included_elements.rhythm = false
+            elseif k=='full' then
+                included_elements.field_text = true
+                included_elements.title = true
+                included_elements.rhythm = true
+                included_elements.meter = true
+                included_elements.key = true
+                included_elements.bar = true
+                included_elements.chord = true
+                included_elements.timing_change = true
+            end                
+        end
+    end     
+end
+
 
 function code_stream_tune(seq, tracked_state, stream)        
     for i,v in ipairs(stream) do        
@@ -127,7 +199,7 @@ function code_stream_tune(seq, tracked_state, stream)
                     else
                         insert_string(seq, v.content)
                     end                    
-                    table.insert(seq, '\t')    -- end of text field marker
+                    table.insert(seq, '*')    -- end of text field marker
                     tracked_state[v.name] = v.content
                 end
             elseif v.event=='key' then 
@@ -174,13 +246,26 @@ function bits_to_bytes(s)
     return table.concat(result)
 end 
 
+-- convert a binary string to an integer
+function bits_to_int(s)
+    local result = 0
+    for i=1,#s do
+        local c = s:sub(i,i)
+        if c=="1" then
+            result = result + 2^(#s-i)
+        end
+    end
+    return result
+end
+
 -- output a huffman table in the format
 -- bytes_str bits_code [str] [code padded to byte width]
 function output_huffman_table(codes)
     local t = {}
     for str, bin_code in pairs(codes) do
         local byte_code = bits_to_bytes(bin_code)
-        table.insert(t, string.char(#byte_code)..string.char(#bin_code)..str..byte_code)    
+        io.stderr:write(#str, " ", #bin_code, " ", str, " ", bytes_to_hex(byte_code), "\n")
+        table.insert(t, string.char(#str)..string.char(#bin_code)..str..byte_code)    
     end
     return table.concat(t)
 end 
@@ -223,7 +308,7 @@ function huffman_compress_table(tab)
         local code = codes[c]
         for j=1,#code do
             table.insert(result, code:sub(j,j))
-        end
+        end       
     end
     return table.concat(result), codes
 end
@@ -231,6 +316,7 @@ end
 
 -- test code
 local songs = parse_abc_file("tests/p_hardy.abc")    
+local out_file = "examples/abc-huffman-player/p_hardy.huf"
 local seq_out = {}
 local state = {}
 for i, song in ipairs(songs) do    
@@ -242,15 +328,23 @@ for i, song in ipairs(songs) do
     end     
 end
 
+function bytes_to_hex(s)
+    local t = {}
+    for i=1,#s do
+        table.insert(t, string.format("%02x", s:byte(i,i)))
+    end
+    return table.concat(t, " ")
+end
+
 function byte_uint32(n)
     -- return a 4 byte string representing the unsigned integer n
     -- in little endian order
-    local result = {}
+    local output = {}
     for i=1,4 do
-        table.insert(result, string.char(n%256))
+        table.insert(output, string.char(n%256))
         n = math.floor(n/256)
     end
-    return table.concat(result)
+    return table.concat(output)
 end
 
 -- double end-of-tune indicates end of all tunes
@@ -260,15 +354,22 @@ reset_state(seq_out, state)
 -- write out the sequence
 --print(#table.concat(seq_out))
 
+parse_command_line_args()
 result, codes = huffman_compress_table(seq_out)
 
+-- count number of codes
+local count = 0
+for i,v in pairs(codes) do
+    count = count + 1
+end
+
 bits = bits_to_bytes(result)
-stream = "HUFM".. byte_uint32(#codes) .. output_huffman_table(codes) .. byte_uint32(#bits) .. bits_to_bytes(result)
+stream = "HUFM".. byte_uint32(count) .. output_huffman_table(codes) .. byte_uint32(#bits) .. bits_to_bytes(result)
 
-
-debug = true
-if debug then 
-    print(table.concat(seq_out, ''))
+if included_elements.debug then 
+    
+    
+    print(table.concat(seq_out, ' '))
     print(#result/8)
     table_print(codes)
     print(#stream)
@@ -280,7 +381,9 @@ if debug then
     print(count)
     
 else
-    io.write(stream)
+    local f = io.open(out_file, "wb")
+    f:write(stream)
+    f:close()    
     io.stderr:write(#stream)
 end
 

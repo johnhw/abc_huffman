@@ -1,7 +1,7 @@
 #define BASE_NOTE 69 /* A440 */
 #define A440 69
 #define TUNE_TERMINATOR "\n"
-#define STRING_TERMINATOR "\t"
+#define STRING_TERMINATOR "*"
 #define STRING_TOKENS 1
 #define NORMAL_TOKENS 0
 #define MAX_TITLE 256

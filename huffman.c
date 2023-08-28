@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include "huffman.h"
 
 /* extract the bit at bit index pos from the byte array x */
@@ -13,20 +14,22 @@ char *read_one_entry(char *buf, huffman_entry *entry)
     */
     char *p = buf;
     int i;
-    int n_bytes;
-    n_bytes = *p++;    
-    entry->token_string_len = n_bytes;
-    entry->n_bits = *p++;
+    
+    entry->token_string_len = *(p++);
+    entry->n_bits = *(p++);
     entry->token_string = malloc(entry->token_string_len+1);
     for (i=0; i<entry->token_string_len; i++) {
-        entry->token_string[i] = *p++;
+        entry->token_string[i] = *(p++);
     }
+    
     entry->token_string[entry->token_string_len] = '\0';
     /* Read n bits into code */
     entry->code = 0;
     for (i=0; i<entry->n_bits; i++) {
         entry->code = (entry->code<<1) | BIT_AT(p, i);
     }    
+    p += (entry->n_bits+7)>>3;
+    printf("%d %d %s %d %d\n", entry->token_string_len, entry->n_bits,  entry->token_string, entry->code, (entry->n_bits+7)>>3);  
     return p;    
 }
 
@@ -34,22 +37,22 @@ char *read_huffman_table(char *buf, huffman_table *table)
 {
     /* Read a huffman table from buf, returning the advanced buf pointer. */
     /* Table should already be allocated. */
-    char *p = buf;    
+    
     int i;
     
     huffman_entry *entry;        
     /* read a uint32_t from buf */
-    table->n_entries = (uint32_t*)p[0];
-    p += sizeof(uint32_t);
+    table->n_entries = ((uint32_t*) buf)[0];
+    buf += sizeof(uint32_t);
     /* allocate space for the entries */
     table->entries = malloc(sizeof(huffman_entry*)*table->n_entries);
     /* read each entry */
     for (i=0; i<table->n_entries; i++) {
         entry = malloc(sizeof(huffman_entry));
-        p = read_one_entry(p, entry);
+        buf = read_one_entry(buf, entry);
         table->entries[i] = entry;
     }
-    return p;
+    return buf;
 }
 
 void free_huffman_table(huffman_table *table)
@@ -64,14 +67,14 @@ void free_huffman_table(huffman_table *table)
     free(table);
 }
 
-huffman_buffer *read_huffman(char *buf)
+huffman_buffer *read_huffman(char *buf)     
 {
     huffman_table *table;
     /* Read the tune data from buf. */
     /* Check the header begins 'ABCM' */
     if (buf[0] != 'H' || buf[1] != 'U' || buf[2] != 'F' || buf[3] != 'M') {
         printf("Error: not an HUFM file\n");
-        return;
+        return NULL;
     }
     buf += 4;
     table = malloc(sizeof(huffman_table));
@@ -80,7 +83,8 @@ huffman_buffer *read_huffman(char *buf)
     /* Now buf points to the compressed data. 
     Create a huffman_buffer structure and return it */
     huffman_buffer *buffer = malloc(sizeof(buffer));
-    buffer->n_bits = (uint32_t*)buf[0];
+    buffer->n_bits = ((uint32_t*)buf)[0];
+    printf("Compressed data size: %d\n", buffer->n_bits);
     buf += sizeof(uint32_t);
     buffer->table = table;
     buffer->buf = buf;
@@ -153,12 +157,12 @@ void seek_symbol(uint32_t symbol, huffman_buffer *buffer)
 uint32_t lookup_symbol_index(char *text, huffman_table *table)
 {
     /* Find the symbol index that matches text, or 
-    return NULL if no match is found. */
+    return INVALID_CODE if no match is found. */
     int i;
     for(i=0; i<table->n_entries; i++) {
         if(strcmp(text, table->entries[i]->token_string)==0) {
             return i;
         }
     }
-    return NULL;
+    return INVALID_CODE;
 }
