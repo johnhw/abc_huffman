@@ -364,7 +364,7 @@ for i,v in pairs(codes) do
 end
 
 bits = bits_to_bytes(result)
-stream = "HUFM".. byte_uint32(count) .. output_huffman_table(codes) .. byte_uint32(#bits) .. bits_to_bytes(result)
+stream = "HUFM".. byte_uint32(count) .. output_huffman_table(codes) .. byte_uint32(#result) .. bits_to_bytes(result)
 
 if included_elements.debug then 
     

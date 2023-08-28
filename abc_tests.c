@@ -34,6 +34,11 @@ int main(int argc, char **argv)
 
     /* Decode all of the symbols until we reach the end of the buffer */
     while(h_buffer->pos<h_buffer->n_bits) {
-        printf("%s ", h_buffer->table->entries[read_symbol(h_buffer)]->token_string);
+        int symbol = read_symbol(h_buffer);
+        if(symbol==INVALID_CODE) {
+            printf("Error: invalid code\n");
+            break;
+        }
+        printf("%s ", h_buffer->table->entries[symbol]->token_string);
     }
 }

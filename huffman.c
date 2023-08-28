@@ -29,7 +29,7 @@ char *read_one_entry(char *buf, huffman_entry *entry)
         entry->code = (entry->code<<1) | BIT_AT(p, i);
     }    
     p += (entry->n_bits+7)>>3;
-    printf("%d %d %s %d %d\n", entry->token_string_len, entry->n_bits,  entry->token_string, entry->code, (entry->n_bits+7)>>3);  
+    
     return p;    
 }
 
@@ -83,8 +83,7 @@ huffman_buffer *read_huffman(char *buf)
     /* Now buf points to the compressed data. 
     Create a huffman_buffer structure and return it */
     huffman_buffer *buffer = malloc(sizeof(buffer));
-    buffer->n_bits = ((uint32_t*)buf)[0];
-    printf("Compressed data size: %d\n", buffer->n_bits);
+    buffer->n_bits = ((uint32_t*)buf)[0];    
     buf += sizeof(uint32_t);
     buffer->table = table;
     buffer->buf = buf;
