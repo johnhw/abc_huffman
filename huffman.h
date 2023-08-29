@@ -1,3 +1,8 @@
+#ifndef HUFFMAN_H
+#define HUFFMAN_H
+
+#include <stdint.h>
+
 /* Holds one entry in the huffman table */
 typedef struct huffman_entry {
     uint8_t n_bits;
@@ -41,3 +46,5 @@ uint32_t lookup_symbol_index(char *text, huffman_table *table);
 void free_huffman_table(huffman_table *table);
 
 #define INVALID_CODE 0xFFFFFFFF
+
+#endif

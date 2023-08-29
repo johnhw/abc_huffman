@@ -2,10 +2,10 @@
 
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -O2
+CFLAGS = -Wall -Wextra -g -std=c99 -pedantic
 
 # Source files
-SRCS = huffman.c huffman_tunes.c abc_tests.c
+SRCS = huffman.c huffman_tunes.c abc_tests.c music_data.c
 
 # Object files
 OBJS = $(SRCS:.c=.o)

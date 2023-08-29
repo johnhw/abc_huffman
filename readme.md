@@ -11,7 +11,7 @@ The player is limited, and supports playback of monophonic tunes only. Metadata 
 To create the compressed tune format, use:
 
 ```shell
-lua huf_compress_tune.lua file.abc > file.huf
+lua huf_compress_tune.lua file.abc file.huf
 ```
 
 Command line arguments:
@@ -60,7 +60,7 @@ The compressed data represents an ASCII string which encodes the simplified tune
         - The metadata is terminated by `*` token
     - `\n` (newline) end of tune
 
-The data is terminated by two newlines, and the compressed data is zero-padded to the nearest byte.
+The data is terminated by two consecutive newlines, and the compressed data is zero-padded to the nearest byte.
 
 ## Example
 
@@ -81,7 +81,7 @@ The tune "What shall we do with the drunken sailor?" becomes:
  ```
  
  ### Compression
- With this format, [Paul Hardy's 2023 ABC tunebook](https://pghardy.net/tunebooks/pgh_session_tunebook.abc) of 270 traditional tunes compresses to **52KB** with titles, chords, bars, tempo included and **29KB** with all metadata, bars, chords, tempo stripped out.
+ With this format, [Paul Hardy's 2023 ABC tunebook](https://pghardy.net/tunebooks/pgh_session_tunebook.abc) of 269 traditional tunes compresses to **52KB** with titles, chords, bars, tempo included and **29KB** with all metadata, bars, chords, tempo stripped out.
 
 
     

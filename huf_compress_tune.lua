@@ -22,6 +22,8 @@ base_duration = 0.25
 -- ...
 -- [|][|] end of tunes
 
+tune_terminator = "\n"
+
 function reset_state(seq, tracked_state)
     tracked_state.semitones = base_note
     tracked_state.duration = base_duration
@@ -30,7 +32,6 @@ function reset_state(seq, tracked_state)
     tracked_state.delta = 0
     tracked_state.title = nil
     tracked_state.rhythm = nil
-    table.insert(seq, "\n")    
 end
     
 function update_state(seq, tracked_state, note, duration, is_rest)    
@@ -92,7 +93,7 @@ end
 -- allow elements to included/excluded from the stream
 -- note, rest are essential; timing_change is essential if
 -- tempos are to be preserved
-included_elements = {
+default_included_elements = {
     field_text=true,
     bar=true,
     key=true,
@@ -105,6 +106,9 @@ included_elements = {
     title=true,
     debug_mode=false, 
 }
+
+in_abc = nil -- input ABC file
+out_huf = nil  -- output huffman file
 
 -- `--debug` dump the raw symbol stream, and the huffman table data to stdout
 -- `--all-text` preserve all text in the compressed file
@@ -121,9 +125,17 @@ included_elements = {
 
 function parse_command_line_args()
    -- set included_elements according to flags    
-    for v, k in pairs(arg) do 
+    local included_elements = default_included_elements    
+    for v, k in ipairs(arg) do 
+        -- capture positional arguments
+        if k:sub(1,2)~='--' then 
+            if in_abc==nil then 
+                in_abc = k
+            elseif out_huf==nil then 
+                out_huf = k
+            end         
         -- find '--' prefixed arguments
-        if k:sub(1,2)=='--' then 
+        elseif k:sub(1,2)=='--' then 
             -- remove '--' prefix
             k = k:sub(3)
             flag = true 
@@ -177,6 +189,14 @@ function parse_command_line_args()
             end                
         end
     end     
+    if in_abc == nil or out_huf==nil then 
+        io.stderr:write("Usage: lua huf_compress_tune.lua [options] <abc_file> <huf_file>\n")
+        io.stderr:write("Options: [--debug] [--all-text] [--no-text] [--title] [--no-title]\n")
+        io.stderr:write("         [--rhythm] [--no-rhythm] [--meter] [--no-meter] [--key] [--no-key]\n")
+        io.stderr:write("         [--bars] [--no-bars] [--chords] [--no-chords] [--timing] [--no-timing] [--bare] [--full]\n")
+        os.exit(1)
+    end
+    return in_abc, out_huf, included_elements
 end
 
 
@@ -263,8 +283,7 @@ end
 function output_huffman_table(codes)
     local t = {}
     for str, bin_code in pairs(codes) do
-        local byte_code = bits_to_bytes(bin_code)
-        io.stderr:write(#str, " ", #bin_code, " ", str, " ", bytes_to_hex(byte_code), "\n")
+        local byte_code = bits_to_bytes(bin_code)        
         table.insert(t, string.char(#str)..string.char(#bin_code)..str..byte_code)    
     end
     return table.concat(t)
@@ -314,18 +333,26 @@ function huffman_compress_table(tab)
 end
 
 
--- test code
-local songs = parse_abc_file("tests/p_hardy.abc")    
-local out_file = "examples/abc-huffman-player/p_hardy.huf"
-local seq_out = {}
-local state = {}
-for i, song in ipairs(songs) do    
-    if song.metadata.title then        
-        reset_state(seq_out, state)
-        for j,voice in pairs(song.voices) do 
-            code_stream_tune(seq_out, state, voice.stream)
-        end        
-    end     
+-- The main conversion routine, taking
+-- an ABC file name and returing the token sequence
+function abc_to_tokens(abc_file)
+    local songs = parse_abc_file(abc_file)
+    local seq_out = {}
+    local state = {}
+    for i, song in ipairs(songs) do    
+        if song.metadata.title then                
+            reset_state(seq_out, state)
+            for j,voice in pairs(song.voices) do 
+                code_stream_tune(seq_out, state, voice.stream)
+            end        
+            table.insert(seq_out, tune_terminator)    
+        end     
+    
+    end
+    -- double end-of-tune indicates end of all tunes
+    table.insert(seq_out, tune_terminator)    
+    table.insert(seq_out, tune_terminator)
+    return seq_out
 end
 
 function bytes_to_hex(s)
@@ -347,43 +374,32 @@ function byte_uint32(n)
     return table.concat(output)
 end
 
--- double end-of-tune indicates end of all tunes
-reset_state(seq_out, state)   
-reset_state(seq_out, state)   
 
--- write out the sequence
---print(#table.concat(seq_out))
-
-parse_command_line_args()
-result, codes = huffman_compress_table(seq_out)
-
--- count number of codes
-local count = 0
-for i,v in pairs(codes) do
-    count = count + 1
+function table_len(t)
+    local count = 0
+    for i,v in pairs(t) do
+        count = count + 1
+    end
+    return count
 end
 
-bits = bits_to_bytes(result)
-stream = "HUFM".. byte_uint32(count) .. output_huffman_table(codes) .. byte_uint32(#result) .. bits_to_bytes(result)
+-- main
+in_abc, out_file, included_elements = parse_command_line_args()
+seq_out = abc_to_tokens(in_abc)
+bit_stream, codes = huffman_compress_table(seq_out)
+code_count = table_len(codes)
+byte_stream = bits_to_bytes(bit_stream)
+stream = "HUFM".. byte_uint32(code_count) .. output_huffman_table(codes) .. byte_uint32(#bit_stream) .. byte_stream
 
-if included_elements.debug then 
-    
-    
+if included_elements.debug then     
     print(table.concat(seq_out, ' '))
     print(#result/8)
     table_print(codes)
-    print(#stream)
-    -- print number of codes in codes
-    local count = 0
-    for i,v in pairs(codes) do
-        count = count + 1
-    end
-    print(count)
-    
+    print(#stream)    
 else
     local f = io.open(out_file, "wb")
     f:write(stream)
     f:close()    
-    io.stderr:write(#stream)
+    io.stderr:write("Wrote "..#stream.." bytes to "..out_file.."\n")
 end
 

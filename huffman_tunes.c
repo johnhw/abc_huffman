@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <math.h>
 #include "huffman.h"
 #include "huffman_tunes.h"
 
@@ -27,6 +28,8 @@ uint32_t *create_tune_index(huffman_buffer *buffer)
 
     int n_tunes = 0;    
     uint32_t nl = lookup_symbol_index(TUNE_TERMINATOR, buffer->table); 
+    reset_buffer(buffer);
+    
 
     /* Count the number of tunes in the buffer */
     while(peek_symbol(buffer)!=nl) {
@@ -37,15 +40,28 @@ uint32_t *create_tune_index(huffman_buffer *buffer)
     
     /* Allocate space for the index */
     uint32_t *index = malloc(sizeof(uint32_t)*(n_tunes+1));
-    *index++ = n_tunes;
+    uint32_t *p = index;
+    *p++ = n_tunes;
 
     /* Reset the buffer */
     reset_buffer(buffer);
+    
     while(peek_symbol(buffer)!=nl) {
         /* Read the next tune */
-        *index++ = buffer->pos;
+        *p++ = buffer->pos;
         seek_forward_one_tune(buffer);
     }
+    return index;
+}
+
+void seek_forward_one_tune(huffman_buffer *buffer)
+{
+    /* Seek forward one tune in the buffer */
+    uint32_t nl = lookup_symbol_index(TUNE_TERMINATOR, buffer->table); 
+    while(peek_symbol(buffer)!=nl) {
+        read_symbol(buffer);
+    }
+    read_symbol(buffer);
 }
 
 void seek_to_tune(uint32_t ix, uint32_t *tune_index, huffman_buffer *buffer)
@@ -72,8 +88,7 @@ tune_context *new_context()
 
 void free_context(tune_context *context)
 {
-    /* Free the memory associated with a tune context */
-    free(context->meta->chord_type->chord);
+    /* Free the memory associated with a tune context */    
     free(context->meta->chord_type);
     free(context->meta);
     free(context->parser);
@@ -132,7 +147,7 @@ void decode_token(char *token, tune_context *context)
     /* In STRING_TOKENS mode, we just append the token to the target string */
     if(context->parser->token_mode == STRING_TOKENS) {
         /* end of tokens? */
-        if(*token==STRING_TERMINATOR)
+        if(!strcmp(token,STRING_TERMINATOR))
             context->parser->token_mode = NORMAL_TOKENS;
         else        
             strcat(context->parser->token_string, token);                                    
@@ -171,8 +186,8 @@ void decode_token(char *token, tune_context *context)
             break;
         case '%':
             /* Meter */            
-            context->meta->meter_numerator = atoi(strtok(p, '/'));
-            context->meta->meter_denominator = atoi(strtok(NULL, '/'));
+            context->meta->meter_numerator = atoi(strtok(p, "/"));
+            context->meta->meter_denominator = atoi(strtok(NULL, "/"));
             break;
         case '|':
             /* Bar */
@@ -194,10 +209,11 @@ void decode_token(char *token, tune_context *context)
         case '~':
             /* Rest */
             trigger_note(context, 1);
+            break;
         /* Relative change in duration */
         case '/':
-            context->current_duration *= atoi(strtok(p, '/'));
-            context->current_duration /= atoi(strtok(NULL, '/'));
+            context->current_duration *= atoi(strtok(p, "/"));
+            context->current_duration /= atoi(strtok(NULL, "/"));
             break;
         default:
             printf("Error: unknown token type %c\n", leading);
@@ -205,48 +221,48 @@ void decode_token(char *token, tune_context *context)
     }
 }
 
-void *decode_chord(char *name, chord_type *out)
-{
-    /* Chords are in the form <base><type>, where
-    base is a note name (like A, B, Ds, Cb) and
-    type is a type name (like maj, min, 7)
-    For example, Amaj or Dsmin7. Write the full 
-    chord data to out, where each offset is a note increment
-    from C. -1 means no note to be played.   
-    */
-    /* Search the note names for the base */
-    note_offset *note = note_offsets;
-    chord_type *chord = chord_types;
-    int i;
-    while(note->note_name) {
-        if(!strncmp(note->note_name, name, strlen(note->note_name))) {
-            /* Found the base note */
-            break;
-        }
-        note++;
-    }
-    if(note->note_name == NULL) {
-        printf("Error: unknown note name %s\n", name);
-        return NULL;
-    }
-    /* Search the chord types for the type */
+// void *decode_chord(char *name, chord_type *out)
+// {
+//     /* Chords are in the form <base><type>, where
+//     base is a note name (like A, B, Ds, Cb) and
+//     type is a type name (like maj, min, 7)
+//     For example, Amaj or Dsmin7. Write the full 
+//     chord data to out, where each offset is a note increment
+//     from C. -1 means no note to be played.   
+//     */
+//     /* Search the note names for the base */
+//     note_offset *note = note_offsets;
+//     chord_type *chord = chord_types;
+//     int i;
+//     while(note->note_name) {
+//         if(!strncmp(note->note_name, name, strlen(note->note_name))) {
+//             /* Found the base note */
+//             break;
+//         }
+//         note++;
+//     }
+//     if(note->note_name == NULL) {
+//         printf("Error: unknown note name %s\n", name);
+//         return NULL;
+//     }
+//     /* Search the chord types for the type */
     
-    while(chord->chord_type) {
-        if(!strncmp(chord->chord_type, name+strlen(note->note_name), strlen(chord->chord_type))) {
-            /* Found the chord type */
-            break;
-        }
-        chord++;
-    }
-    if(chord->chord_type == NULL) {
-        printf("Error: unknown chord type %s\n", name);
-        return NULL;
-    }
-    /* Write new chord to out */
-    strcpy(out->chord_type, name);    
-    for(i=0; i<5; i++) {
-        if(chord->chord[i]==-1)
-            break;
-        out->chord[i] = note->offset + chord->chord[i];
-    }
-}
+//     while(chord->chord_type) {
+//         if(!strncmp(chord->chord_type, name+strlen(note->note_name), strlen(chord->chord_type))) {
+//             /* Found the chord type */
+//             break;
+//         }
+//         chord++;
+//     }
+//     if(chord->chord_type == NULL) {
+//         printf("Error: unknown chord type %s\n", name);
+//         return NULL;
+//     }
+//     /* Write new chord to out */
+//     strcpy(out->chord_type, name);    
+//     for(i=0; i<5; i++) {
+//         if(chord->chord[i]==-1)
+//             break;
+//         out->chord[i] = note->offset + chord->chord[i];
+//     }
+// }

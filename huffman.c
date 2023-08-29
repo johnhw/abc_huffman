@@ -38,7 +38,7 @@ char *read_huffman_table(char *buf, huffman_table *table)
     /* Read a huffman table from buf, returning the advanced buf pointer. */
     /* Table should already be allocated. */
     
-    int i;
+    uint32_t i;
     
     huffman_entry *entry;        
     /* read a uint32_t from buf */
@@ -58,7 +58,7 @@ char *read_huffman_table(char *buf, huffman_table *table)
 void free_huffman_table(huffman_table *table)
 {
     /* Free the memory associated with a huffman table */
-    int i;
+    uint32_t i;
     for(i=0; i<table->n_entries; i++) {
         free(table->entries[i]->token_string);
         free(table->entries[i]);
@@ -105,7 +105,7 @@ uint32_t read_symbol(huffman_buffer *buffer)
     uint32_t code = 0;
     uint8_t found_code = 0; /* flag to indicate we've found a complete code */
     uint8_t b; 
-    int i;
+    uint32_t i;
     while(!found_code)
     {
         if(buffer->pos >= buffer->n_bits) {
@@ -157,7 +157,7 @@ uint32_t lookup_symbol_index(char *text, huffman_table *table)
 {
     /* Find the symbol index that matches text, or 
     return INVALID_CODE if no match is found. */
-    int i;
+    uint32_t i;
     for(i=0; i<table->n_entries; i++) {
         if(strcmp(text, table->entries[i]->token_string)==0) {
             return i;
