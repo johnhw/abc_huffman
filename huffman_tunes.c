@@ -67,7 +67,7 @@ void seek_forward_one_tune(huffman_buffer *buffer)
 void seek_to_tune(uint32_t ix, uint32_t *tune_index, huffman_buffer *buffer)
 {
     /* Seek to the start of the tune at index ix */    
-    if(ix>=*tune_index) {
+    if(ix>=tune_index[0]) {
         printf("Error: tune index out of range\n");
         return;
     }
@@ -138,12 +138,15 @@ void string_token(tune_context *context, char *target)
     context->parser->token_string = target;     
 }
 
-void decode_token(char *token, tune_context *context)
+void decode_token(tune_context *context, char *token)
 {
 
     char leading = token[0];
     char *p = token+1;
+    char dup[16];
     
+    printf("Token `%s`, token mode %d\n", token, context->parser->token_mode);
+
     /* In STRING_TOKENS mode, we just append the token to the target string */
     if(context->parser->token_mode == STRING_TOKENS) {
         /* end of tokens? */
@@ -164,10 +167,10 @@ void decode_token(char *token, tune_context *context)
             In this case, we need to switch to string tokens
             until we find an end of string token marker.
             */        
-            if(!strcmp(token, "title")) {
+            if(!strcmp(p, "title")) {
                    string_token(context, context->meta->title);        
             }
-            else if(!strcmp(token, "rhythm")) {
+            else if(!strcmp(p, "rhythm")) {
                 string_token(context, context->meta->rhythm);                        
             }            
             break;
@@ -186,12 +189,14 @@ void decode_token(char *token, tune_context *context)
             break;
         case '%':
             /* Meter */            
-            context->meta->meter_numerator = atoi(strtok(p, "/"));
+            strcpy(dup, p);
+            context->meta->meter_numerator = atoi(strtok(dup, "/"));
             context->meta->meter_denominator = atoi(strtok(NULL, "/"));
+            
             break;
         case '|':
             /* Bar */
-            context-> bar_count++;
+            context->bar_count++;
             context->bar_start_time = context->time;
             context->bar_end_time = context->time + context->meta->bar_duration;
             break;        
@@ -212,8 +217,11 @@ void decode_token(char *token, tune_context *context)
             break;
         /* Relative change in duration */
         case '/':
-            context->current_duration *= atoi(strtok(p, "/"));
-            context->current_duration /= atoi(strtok(NULL, "/"));
+            int num, den;
+            strcpy(dup, p);
+            num = atoi(strtok(dup, "/"));
+            den = atoi(strtok(NULL, "/"));                       
+            context->current_duration = (num/den) * BASE_DURATION;
             break;
         default:
             printf("Error: unknown token type %c\n", leading);

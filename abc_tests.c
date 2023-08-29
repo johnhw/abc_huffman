@@ -4,6 +4,40 @@
 #include "huffman.h"
 #include "huffman_tunes.h"
 
+void dump_tune(huffman_buffer *h_buffer)
+{
+
+    uint32_t nl = lookup_symbol_index(TUNE_TERMINATOR, h_buffer->table);
+    printf("Buffer position %d\n", h_buffer->pos);
+    while(peek_symbol(h_buffer)!=nl) {
+        uint32_t symbol = read_symbol(h_buffer);
+        if(symbol==INVALID_CODE) {
+            printf("Error: invalid code\n");
+            break;
+        }
+        printf("%s ", h_buffer->table->entries[symbol]->token_string);
+    }
+}
+
+tune_context *parse_tune(huffman_buffer *h_buffer)
+{
+    uint32_t nl = lookup_symbol_index(TUNE_TERMINATOR, h_buffer->table);
+    tune_context *ctx = new_context();
+    char *token;
+    printf("Buffer position %d\n", h_buffer->pos);
+    while(peek_symbol(h_buffer)!=nl) {
+        uint32_t symbol = read_symbol(h_buffer);
+        if(symbol==INVALID_CODE) {
+            printf("Error: invalid code\n");
+            break;
+        }
+        token = h_buffer->table->entries[symbol]->token_string;
+        decode_token(ctx, token);
+    }
+    return ctx;
+}
+
+
 int main(int argc, char **argv)
 {
     /* Read a huffman table from a file, and print it out */
@@ -37,25 +71,48 @@ int main(int argc, char **argv)
     }
 
     /* Decode all of the symbols until we reach the end of the buffer */
-    while(h_buffer->pos<h_buffer->n_bits) {
-        uint32_t symbol = read_symbol(h_buffer);
-        if(symbol==INVALID_CODE) {
-            printf("Error: invalid code\n");
-            break;
-        }
-        printf("%s ", h_buffer->table->entries[symbol]->token_string);
-    }
+    // while(h_buffer->pos<h_buffer->n_bits) {
+    //     uint32_t symbol = read_symbol(h_buffer);
+    //     if(symbol==INVALID_CODE) {
+    //         printf("Error: invalid code\n");
+    //         break;
+    //     }
+    //     printf("%s ", h_buffer->table->entries[symbol]->token_string);
+    // }
 
     
     uint32_t *index = create_tune_index(h_buffer);
-
+    uint32_t *p = index;
     /* Print out the index */
     printf("\nIndex:\n");
-    uint32_t n_tunes = *index++;
+    uint32_t n_tunes = *p++;
     printf("Number of tunes: %d\n", n_tunes);
     for(i=0; i<n_tunes; i++) {
-        printf("%d\n", *index++);
+        printf("%d\n", *p++);
     }
+
+    
+    /* Test seeking to a tune */
+    seek_to_tune(0, index, h_buffer);
+    printf("\nSeeking to tune 0\n");
+    dump_tune(h_buffer);
+    printf("\nSeeking to tune 5\n");
+    seek_to_tune(5, index, h_buffer);
+    dump_tune(h_buffer);
+    printf("\nSeeking to tune 50\n");
+    seek_to_tune(50, index, h_buffer);
+    dump_tune(h_buffer);
+    printf("\nSeeking to last tune\n");
+    seek_to_tune(index[0]-1, index, h_buffer);
+    dump_tune(h_buffer);
+
+    /* Test seeking to a tune */
+    seek_to_tune(0, index, h_buffer);
+    printf("\nSeeking to tune 0\n");
+    parse_tune(h_buffer);
+    
+
+    
 
     return 0;
 }

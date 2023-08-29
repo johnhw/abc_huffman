@@ -76,8 +76,11 @@ void seek_forward_one_tune(huffman_buffer *buffer);
 void reset_context(tune_context *context);
 void trigger_note(tune_context *context, int rest);
 void string_token(tune_context *context, char *target);
-void decode_token(char *token, tune_context *context);
+void decode_token(tune_context *context, char *token);
 uint32_t *create_tune_index(huffman_buffer *buffer);
+void seek_to_tune(uint32_t ix, uint32_t *tune_index, huffman_buffer *buffer);
+tune_context *new_context();
+void free_context(tune_context *context);
 
 
 #endif
