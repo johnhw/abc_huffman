@@ -19,23 +19,6 @@ void dump_tune(huffman_buffer *h_buffer)
     }
 }
 
-tune_context *parse_tune(huffman_buffer *h_buffer)
-{
-    uint32_t nl = lookup_symbol_index(TUNE_TERMINATOR, h_buffer->table);
-    tune_context *ctx = new_context();
-    char *token;
-    printf("Buffer position %d\n", h_buffer->pos);
-    while(peek_symbol(h_buffer)!=nl) {
-        uint32_t symbol = read_symbol(h_buffer);
-        if(symbol==INVALID_CODE) {
-            printf("Error: invalid code\n");
-            break;
-        }
-        token = h_buffer->table->entries[symbol]->token_string;
-        decode_token(ctx, token);
-    }
-    return ctx;
-}
 
 
 int main(int argc, char **argv)
@@ -109,7 +92,7 @@ int main(int argc, char **argv)
     /* Test seeking to a tune */
     seek_to_tune(0, index, h_buffer);
     printf("\nSeeking to tune 0\n");
-    parse_tune(h_buffer);
+    parse_tune(h_buffer, NULL);
     
 
     

@@ -4,6 +4,8 @@
 #include <stdlib.h> 
 #include "huffman.h"
 
+#define EVENT(context, event_code) if(context->event_callback) context->event_callback(context, event_code)
+
 #define BASE_NOTE 69 /* A440 */
 #define A440 69
 #define TUNE_TERMINATOR "\n"
@@ -12,6 +14,15 @@
 #define NORMAL_TOKENS 0
 #define MAX_TITLE 256
 #define BASE_DURATION 0.25 /* 1/4 bar */
+#define MAX_TOKEN 32
+
+#define EVENT_NOTE 1
+#define EVENT_REST 2
+#define EVENT_CHORD 3
+#define EVENT_BAR 4
+#define EVENT_KEY 5
+#define EVENT_TUNE_START 6
+#define EVENT_TUNE_END 7
 
 
 
@@ -54,13 +65,16 @@ typedef struct parser_context
     char *token_string; /* pointer to a string to write the next string tokens to */        
 } parser_context;
 
+struct tune_context;
+typedef void(*event_callback_type)(struct tune_context *ctx, uint32_t event_code);
+
 /* The context inside a tune */
 typedef struct tune_context
 {
     /* All timings in microseconds */    
     tune_metadata *meta;
-    parser_context *parser;
-
+    parser_context *parser;    
+    event_callback_type event_callback;
     uint32_t current_duration; /* Note duration in microseconds */
     uint8_t current_note; /* MIDI note number */    
     uint8_t note_on; /* 1 if a note is currently on, 0 if not */
@@ -81,6 +95,6 @@ uint32_t *create_tune_index(huffman_buffer *buffer);
 void seek_to_tune(uint32_t ix, uint32_t *tune_index, huffman_buffer *buffer);
 tune_context *new_context();
 void free_context(tune_context *context);
-
+void parse_tune(huffman_buffer *h_buffer, event_callback_type callback);
 
 #endif

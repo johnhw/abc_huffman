@@ -74,12 +74,44 @@ void seek_to_tune(uint32_t ix, uint32_t *tune_index, huffman_buffer *buffer)
     buffer->pos = tune_index[ix+1];    
 }
 
+void debug_callback(tune_context *ctx, uint32_t event_code)
+{
+    /* A debug callback function */
+    switch(event_code) {
+        case EVENT_NOTE:
+            printf("Note %d, duration %d\n", ctx->current_note, ctx->current_duration);
+            break;
+        case EVENT_REST:
+            printf("Rest, duration %d\n", ctx->current_duration);
+            break;
+        case EVENT_BAR:
+            printf("Bar %d\n", ctx->bar_count);
+            break;
+        case EVENT_CHORD:
+            printf("Chord %s\n", ctx->meta->chord);
+            break;
+        case EVENT_KEY:
+            printf("Key %s\n", ctx->meta->key);
+            break;
+        case EVENT_TUNE_START:
+            printf("Tune start\n");
+            break;
+        case EVENT_TUNE_END:
+            printf("Tune end\n");
+            break;
+        default:
+            printf("Unknown event code %d\n", event_code);
+            break;
+    }
+}
+
 tune_context *new_context()
 {
     /* Create a new tune context */
     tune_context *context = malloc(sizeof(tune_context));
     context->meta = malloc(sizeof(tune_metadata));
     context->parser = malloc(sizeof(parser_context));
+    context->event_callback = debug_callback;
     /* Allocate space for the chord type and full chord name */
     context->meta->chord_type = malloc(sizeof(chord_type));    
     reset_context(context);
@@ -127,6 +159,14 @@ void trigger_note(tune_context *context, int rest)
         context->note_on = 0;
     context->note_start_time = context->time;
     context->note_end_time = context->time + context->current_duration;
+    if(!rest)
+    {
+        EVENT(context, EVENT_NOTE);
+    }
+    else
+    {
+        EVENT(context, EVENT_REST);
+    }
 }
 
 /* Take a huffman token and append it to the current target, building
@@ -138,13 +178,37 @@ void string_token(tune_context *context, char *target)
     context->parser->token_string = target;     
 }
 
+
+void parse_tune(huffman_buffer *h_buffer, event_callback_type callback)
+{
+    char *token;
+    uint32_t nl = lookup_symbol_index(TUNE_TERMINATOR, h_buffer->table);
+    tune_context *ctx = new_context();
+    if(callback!=NULL)
+        ctx->event_callback = callback;    
+    else 
+        ctx->event_callback = debug_callback;
+    EVENT(ctx, EVENT_TUNE_START);
+    while(peek_symbol(h_buffer)!=nl) {
+        uint32_t symbol = read_symbol(h_buffer);
+        if(symbol==INVALID_CODE) {
+            printf("Error: invalid code\n");
+            break;
+        }
+        token = h_buffer->table->entries[symbol]->token_string;
+        decode_token(ctx, token);
+    }
+    EVENT(ctx, EVENT_TUNE_END);    
+}
+
 void decode_token(tune_context *context, char *token)
 {
 
     char leading = token[0];
     char *p = token+1;
-    char dup[16];
-    
+    char dup[MAX_TOKEN]; /* tokens are never more than MAX_TOKEN long */
+    int num, den;
+
     printf("Token `%s`, token mode %d\n", token, context->parser->token_mode);
 
     /* In STRING_TOKENS mode, we just append the token to the target string */
@@ -177,10 +241,12 @@ void decode_token(tune_context *context, char *token)
         case '&':
             /* Key */
             strcpy(context->meta->key, p);
+            EVENT(context, EVENT_KEY);
             break;
         case '#':
             /* Chord */
             strcpy(context->meta->chord, p);
+            EVENT(context, EVENT_CHORD);
             break;
         case '^':
             /* Bar duration */
@@ -199,6 +265,7 @@ void decode_token(tune_context *context, char *token)
             context->bar_count++;
             context->bar_start_time = context->time;
             context->bar_end_time = context->time + context->meta->bar_duration;
+            EVENT(context, EVENT_BAR);
             break;        
         /* These indicate that a note should be played */        
         case '+':
@@ -217,11 +284,14 @@ void decode_token(tune_context *context, char *token)
             break;
         /* Relative change in duration */
         case '/':
-            int num, den;
+            
             strcpy(dup, p);
             num = atoi(strtok(dup, "/"));
             den = atoi(strtok(NULL, "/"));                       
             context->current_duration = (num/den) * BASE_DURATION;
+            break;
+        case '\n':
+            EVENT(context, EVENT_TUNE_END);
             break;
         default:
             printf("Error: unknown token type %c\n", leading);
