@@ -248,15 +248,13 @@ void decode_token(tune_context *context, char *token)
             break;
         case '#':
             /* Chord */
-            strcpy(context->meta->chord, p);
+            strcpy(context->meta->chord, p);            
             EVENT(context, EVENT_CHORD);
             break;
         case '^':
             /* Bar duration */
             context->meta->bar_duration = atoi(p);
-            context->current_duration = context->meta->bar_duration * BASE_DURATION;          
-            printf("Bar duration %d\n", context->meta->bar_duration);
-            printf("Current duration %d\n", context->current_duration);  
+            context->current_duration = context->meta->bar_duration * BASE_DURATION;                      
             break;
         case '%':
             /* Meter */            
@@ -288,13 +286,12 @@ void decode_token(tune_context *context, char *token)
             trigger_note(context, 1);
             break;
         /* Relative change in duration */
-        case '/':
-            
+        case '/':            
             strcpy(dup, p);
             num = atoi(strtok(dup, "/"));
             den = atoi(strtok(NULL, "/"));                       
             context->current_duration *= num;
-            context->current_duration /= den;            
+            context->current_duration /= den;                        
             break;
         case '\n':
             EVENT(context, EVENT_TUNE_END);

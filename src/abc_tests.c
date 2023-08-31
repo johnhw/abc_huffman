@@ -94,7 +94,7 @@ int main(int argc, char **argv)
     seek_to_tune(0, index, h_buffer);
     printf("\nSeeking to tune 0\n");
     //parse_tune(h_buffer, NULL);
-    seek_to_tune(4, index, h_buffer);
+    seek_to_tune(5, index, h_buffer);
     parse_tune(h_buffer, wav_callback);
     
 

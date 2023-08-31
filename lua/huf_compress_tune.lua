@@ -44,6 +44,8 @@ function update_state(seq, tracked_state, note, duration, is_rest)
         if n~=1 or d~=1 then 
              table.insert(seq, '/'..n.."/"..d)                            
         end        
+        tracked_state.duration = tracked_state.duration * n / d        
+
     end    
     if is_rest then
         table.insert(seq, "~")
@@ -58,7 +60,7 @@ function update_state(seq, tracked_state, note, duration, is_rest)
         tracked_state.delta = delta 
         tracked_state.semitones = note
     end        
-    tracked_state.duration = new_duration        
+           
 end
 
 -- using gcd reduce a fraction to lowest terms
@@ -207,6 +209,7 @@ function code_stream_tune(seq, tracked_state, stream)
             -- output finalised timing change
             if (v.event=='note' or v.event=='rest') and tracked_state.bar_length~=nil and tracked_state.bar_length~=tracked_state.current_bar_length then 
                 table.insert(seq, '^'..tracked_state.bar_length)
+                tracked_state.duration = base_duration -- reset to base duration
                 tracked_state.current_bar_length = tracked_state.bar_length
                 tracked_state.bar_length = nil                                 
             end             
@@ -228,15 +231,15 @@ function code_stream_tune(seq, tracked_state, stream)
             elseif v.event=='meter' then 
             table.insert(seq, '%'..v.meter.num.."\\"..v.meter.den)                       
             elseif v.event=='chord' then 
-                table.insert(seq, '#'..v.chord.root..v.chord.chord_type)      
+                table.insert(seq, '#'..v.chord.root..v.chord.chord_type)                
+                
             elseif v.event=='note'  then                                                
                 update_state(seq, tracked_state, v.note.play_pitch , v.note.play_bars, false)                
             elseif v.event=='rest' then             
                 update_state(seq, tracked_state, 0, v.note.play_bars , true)                    
-            elseif v.event=='timing_change' then   
-                tracked_state.bar_length = math.floor(v.timing.bar_length)
-                tracked_state.duration = base_duration -- reset to base duration
-                
+            elseif v.event=='timing_change' then                       
+                    tracked_state.bar_length = math.floor(v.timing.bar_length)
+            
             end 
         end 
     end    

@@ -91,16 +91,19 @@ void write_note(wav_context *wav, uint8_t note, uint32_t duration_us, uint8_t re
     uint32_t i;
     uint8_t on = 1;
     uint16_t sample;
+    
 
     for(i=0; i<n_samples; i++) {
         if(i%cycle==0) {
             on = !on;
         }
-        sample = (on && !rest) ? 8192 : 0;
+        
+        
+        sample = (on && !rest) ? 1024 : 0;
         write_u16(wav->f, sample);        
         wav->n_samples++; 
     }    
-    printf("Note %d %d %d %d\n", note, duration_us, rest, wav->n_samples);
+    //printf("Note %d %d %d %d\n", note, duration_us, rest, wav->n_samples);
 }
 
 
@@ -110,7 +113,7 @@ void wav_callback(tune_context *ctx, uint32_t event_code)
     /* The context is a pointer to the parser context */
     
     wav_context *wav = (wav_context*) ctx->callback_context;
-    printf("Event %d\n", event_code);
+    //printf("Event %d\n", event_code);
     switch(event_code) {
         case EVENT_NOTE:            
             write_note(wav, ctx->current_note, ctx->current_duration, 0);
@@ -119,6 +122,12 @@ void wav_callback(tune_context *ctx, uint32_t event_code)
             /* A rest has been parsed */
             /* Write a rest to the WAV file */
             write_note(wav, 0, ctx->current_duration, 1);
+            break;
+        case EVENT_BAR:
+            write_u16(wav->f, 32767); /* Write a click to the WAV file */
+            write_u16(wav->f, 0); /* Write a click to the WAV file */
+            wav->n_samples++;
+            
             break;
         case EVENT_TUNE_START:
             /* The tune has started */
