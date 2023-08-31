@@ -112,6 +112,7 @@ tune_context *new_context()
     context->meta = malloc(sizeof(tune_metadata));
     context->parser = malloc(sizeof(parser_context));
     context->event_callback = debug_callback;
+    context->callback_context = NULL;
     /* Allocate space for the chord type and full chord name */
     context->meta->chord_type = malloc(sizeof(chord_type));    
     reset_context(context);
@@ -139,7 +140,7 @@ void reset_context(tune_context *context)
     context->parser->token_mode = NORMAL_TOKENS;
     context->parser->token_string = "";
     
-    context->current_duration = 0;
+    context->current_duration = 1000000;
     context->current_note = BASE_NOTE;
     context->bar_count = 0;
     context->bar_start_time = 0;
@@ -188,6 +189,8 @@ void parse_tune(huffman_buffer *h_buffer, event_callback_type callback)
         ctx->event_callback = callback;    
     else 
         ctx->event_callback = debug_callback;
+
+    printf("Duration %d\n", ctx->current_duration);
     EVENT(ctx, EVENT_TUNE_START);
     while(peek_symbol(h_buffer)!=nl) {
         uint32_t symbol = read_symbol(h_buffer);
@@ -251,7 +254,9 @@ void decode_token(tune_context *context, char *token)
         case '^':
             /* Bar duration */
             context->meta->bar_duration = atoi(p);
-            context->current_duration = context->meta->bar_duration * BASE_DURATION;            
+            context->current_duration = context->meta->bar_duration * BASE_DURATION;          
+            printf("Bar duration %d\n", context->meta->bar_duration);
+            printf("Current duration %d\n", context->current_duration);  
             break;
         case '%':
             /* Meter */            
@@ -288,7 +293,8 @@ void decode_token(tune_context *context, char *token)
             strcpy(dup, p);
             num = atoi(strtok(dup, "/"));
             den = atoi(strtok(NULL, "/"));                       
-            context->current_duration = (num/den) * BASE_DURATION;
+            context->current_duration *= num;
+            context->current_duration /= den;
             break;
         case '\n':
             EVENT(context, EVENT_TUNE_END);

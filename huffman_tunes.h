@@ -75,6 +75,7 @@ typedef struct tune_context
     tune_metadata *meta;
     parser_context *parser;    
     event_callback_type event_callback;
+    void *callback_context; /* Pointer for the callback to store data */
     uint32_t current_duration; /* Note duration in microseconds */
     uint8_t current_note; /* MIDI note number */    
     uint8_t note_on; /* 1 if a note is currently on, 0 if not */
@@ -96,5 +97,6 @@ void seek_to_tune(uint32_t ix, uint32_t *tune_index, huffman_buffer *buffer);
 tune_context *new_context();
 void free_context(tune_context *context);
 void parse_tune(huffman_buffer *h_buffer, event_callback_type callback);
+uint32_t midi_to_hz(uint8_t note);
 
 #endif

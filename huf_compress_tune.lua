@@ -101,7 +101,7 @@ default_included_elements = {
     note=true,
     rest=true,
     meter=true,
-    timing_change=false,
+    timing_change=true,
     rhythm=false,
     title=true,
     debug_mode=false, 
@@ -173,6 +173,7 @@ function parse_command_line_args()
                 included_elements.key = false
                 included_elements.bar = false
                 included_elements.chord = false
+                included_elements.timing_change = false
             elseif k=='text' and not flag then 
                 included_elements.field_text = false
                 included_elements.title = false
@@ -185,7 +186,7 @@ function parse_command_line_args()
                 included_elements.key = true
                 included_elements.bar = true
                 included_elements.chord = true
-                included_elements.timing_change = true
+                included_elements.timing_change = true                
             end                
         end
     end     

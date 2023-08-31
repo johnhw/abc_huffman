@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "huffman.h"
 #include "huffman_tunes.h"
+void wav_callback(tune_context *ctx, uint32_t event_code);
 
 void dump_tune(huffman_buffer *h_buffer)
 {
@@ -92,7 +93,9 @@ int main(int argc, char **argv)
     /* Test seeking to a tune */
     seek_to_tune(0, index, h_buffer);
     printf("\nSeeking to tune 0\n");
-    parse_tune(h_buffer, NULL);
+    //parse_tune(h_buffer, NULL);
+    seek_to_tune(0, index, h_buffer);
+    parse_tune(h_buffer, wav_callback);
     
 
     
