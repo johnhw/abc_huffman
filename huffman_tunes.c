@@ -294,7 +294,7 @@ void decode_token(tune_context *context, char *token)
             num = atoi(strtok(dup, "/"));
             den = atoi(strtok(NULL, "/"));                       
             context->current_duration *= num;
-            context->current_duration /= den;
+            context->current_duration /= den;            
             break;
         case '\n':
             EVENT(context, EVENT_TUNE_END);
