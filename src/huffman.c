@@ -29,7 +29,7 @@ char *read_one_entry(char *buf, huffman_entry *entry)
         entry->code = (entry->code<<1) | BIT_AT(p, i);
     }    
     p += (entry->n_bits+7)>>3;
-    
+    printf("Read %d bits, code %d, token %s %p\n", entry->n_bits, entry->code, entry->token_string, entry->token_string);
     return p;    
 }
 

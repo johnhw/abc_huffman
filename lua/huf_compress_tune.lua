@@ -396,8 +396,7 @@ byte_stream = bits_to_bytes(bit_stream)
 stream = "HUFM".. byte_uint32(code_count) .. output_huffman_table(codes) .. byte_uint32(#bit_stream) .. byte_stream
 
 if included_elements.debug then     
-    print(table.concat(seq_out, ' '))
-    print(#result/8)
+    print(table.concat(seq_out, ' '))    
     table_print(codes)
     print(#stream)    
 else
