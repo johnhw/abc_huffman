@@ -158,14 +158,17 @@ void trigger_note(tune_context *context, int rest)
         context->note_on = 1;
     else
         context->note_on = 0;
+    
     context->note_start_time = context->time;
     context->note_end_time = context->time + context->current_duration;
     if(!rest)
     {
         EVENT(context, EVENT_NOTE);
+        printf("%d, %d\n", context->current_note, context->current_duration);
     }
     else
     {
+        printf("%d, %d\n", 0, context->current_duration);
         EVENT(context, EVENT_REST);
     }
 }
@@ -211,8 +214,9 @@ void decode_token(tune_context *context, char *token)
     char *p = token+1;
     char dup[MAX_TOKEN]; /* tokens are never more than MAX_TOKEN long */
     int num, den;
-
+#ifdef DEBUG
     printf("Token `%s`, token mode %d\n", token, context->parser->token_mode);
+#endif 
 
     /* In STRING_TOKENS mode, we just append the token to the target string */
     if(context->parser->token_mode == STRING_TOKENS) {

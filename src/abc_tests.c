@@ -55,14 +55,14 @@ int main(int argc, char **argv)
     }
 
     /* Decode all of the symbols until we reach the end of the buffer */
-    while(h_buffer->pos<h_buffer->n_bits) {
-        uint32_t symbol = read_symbol(h_buffer);
-        if(symbol==INVALID_CODE) {
-            printf("Error: invalid code\n");
-            break;
-        }
-        printf("%s ", h_buffer->table->entries[symbol]->token_string);
-    }
+    // while(h_buffer->pos<h_buffer->n_bits) {
+    //     uint32_t symbol = read_symbol(h_buffer);
+    //     if(symbol==INVALID_CODE) {
+    //         printf("Error: invalid code\n");
+    //         break;
+    //     }
+    //     printf("%s ", h_buffer->table->entries[symbol]->token_string);
+    // }
 
     
     uint32_t *index = create_tune_index(h_buffer);
@@ -94,7 +94,7 @@ int main(int argc, char **argv)
     seek_to_tune(0, index, h_buffer);
     printf("\nSeeking to tune 0\n");
     //parse_tune(h_buffer, NULL);
-    seek_to_tune(0, index, h_buffer);
+    seek_to_tune(atoi(argv[2]), index, h_buffer);
     parse_tune(h_buffer, wav_callback);
     
 

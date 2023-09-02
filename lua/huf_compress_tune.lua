@@ -4,23 +4,24 @@ base_note = 69
 base_duration = 0.25
 
 -- Output format:
--- 'ABCM' [n_huffman_codes:u32] [huffman table] [compressed data]
+-- 'HUFM' [n_huffman_codes:u32] [huffman table] [compressed data]
 -- Huffman table format:
 -- [N byte width of string:u8] [K bit width of code:u8] [string:u8*N] [code padded to byte width:u8*|`K/8`|]
 -- Compressed data format:
 -- [huffman stream] ending with codes for "||" 
+-- Huffman stream format:
 -- Compressed data
--- [*title] [ch][ch][ch]...[\n]
--- [*rhythm] [token][\n]
+-- [*title] [ch][ch][ch]...[*]
+-- [*rhythm] [token][*]
 -- [#num\den] meter 
--- [^<bar_in_millis>]
+-- [^<bar_in_microseconds>]
 -- [/x/y] change duration by ratio x/y
--- ([+x] | [-x] | [.]) +/- x semitones, or same as last (.)
+-- ([+x] | [-x]) +/- x semitones
 
--- [:] end of bar
--- [|] end of tune
+-- [|] end of bar
+-- [\n] end of tune
 -- ...
--- [|][|] end of tunes
+-- [\n][\n] end of tunes
 
 tune_terminator = "\n"
 
@@ -44,6 +45,7 @@ function update_state(seq, tracked_state, note, duration, is_rest)
         if n~=1 or d~=1 then 
              table.insert(seq, '/'..n.."/"..d)                            
         end        
+        -- print("duration changed from "..tracked_state.duration.." to "..duration.." ratio "..n.."/"..d)
         tracked_state.duration = tracked_state.duration * n / d        
 
     end    
@@ -64,11 +66,13 @@ function update_state(seq, tracked_state, note, duration, is_rest)
 end
 
 -- using gcd reduce a fraction to lowest terms
-function reduce(n, d)
+function old_reduce(n, d)
     -- return the greatest common divisor of a and b
+    n= math.floor(n)
+    d= math.floor(d)
     function limited_gcd(a, b)
         local i =0 
-        while a ~= 0  and i<10 do
+        while a ~= 0  and i<25 do
             a,b = (b%a),a
             i = i + 1        
         end
@@ -81,6 +85,25 @@ function reduce(n, d)
     local g = limited_gcd(n, d)
     if g<0.0001 then return 1,1 end     
     return n / g, d / g
+end    
+
+
+-- using gcd reduce a fraction to lowest terms
+function reduce(a, b)
+    -- return the greatest common divisor of a and b
+    local epsilon = 1e-5
+    local x = a / b 
+    local d = 0
+    local n
+    local error = 1
+    
+    while error>epsilon do
+        d = d + 1
+        n = math.floor(x*d + 0.5)
+        error = math.abs(x-n/d)
+        
+    end
+    return n, d
 end    
 
 function insert_string(seq, content)
@@ -209,7 +232,7 @@ function code_stream_tune(seq, tracked_state, stream)
             -- output finalised timing change
             if (v.event=='note' or v.event=='rest') and tracked_state.bar_length~=nil and tracked_state.bar_length~=tracked_state.current_bar_length then 
                 table.insert(seq, '^'..tracked_state.bar_length)
-                tracked_state.duration = base_duration -- reset to base duration
+                tracked_state.duration = tracked_state.bar_length * base_duration -- reset to base duration
                 tracked_state.current_bar_length = tracked_state.bar_length
                 tracked_state.bar_length = nil                                 
             end             
@@ -221,6 +244,7 @@ function code_stream_tune(seq, tracked_state, stream)
                     if v.name=="rhythm" then 
                         table.insert(seq, v.content)
                     else
+                        -- titles are entered character-wise
                         insert_string(seq, v.content)
                     end                    
                     table.insert(seq, '*')    -- end of text field marker
@@ -233,10 +257,10 @@ function code_stream_tune(seq, tracked_state, stream)
             elseif v.event=='chord' then 
                 table.insert(seq, '#'..v.chord.root..v.chord.chord_type)                
                 
-            elseif v.event=='note'  then                                                
-                update_state(seq, tracked_state, v.note.play_pitch , v.note.play_bars, false)                
-            elseif v.event=='rest' then             
-                update_state(seq, tracked_state, 0, v.note.play_bars , true)                    
+            elseif v.event=='note'  then                                                                
+                update_state(seq, tracked_state, v.note.play_pitch , v.note.play_duration, false)                
+            elseif v.event=='rest' then                             
+                update_state(seq, tracked_state, 0, v.note.play_duration , true)                    
             elseif v.event=='timing_change' then                       
                     tracked_state.bar_length = math.floor(v.timing.bar_length)
             
