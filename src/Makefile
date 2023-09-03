@@ -2,7 +2,7 @@
 
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -g -std=c99 -pedantic
+CFLAGS = -Wall -Wextra -ggdb -std=c99 -pedantic
 
 # Source files
 SRCS = huffman.c huffman_tunes.c abc_tests.c music_data.c wav_writer.c note_writer.c

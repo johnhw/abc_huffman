@@ -32,7 +32,7 @@ int main(int argc, char **argv)
 
     printf("Version " __DATE__ " " __TIME__ "\n");
     /* Read the file */
-    fp = fopen(argv[1], "rb");
+    fp = fopen(argv[1], "rb");    
     if(!fp) {
         printf("Error: could not open file %s\n", argv[1]);
         return 1;

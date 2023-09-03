@@ -7,6 +7,7 @@
 /* extract the bit at bit index pos from the byte array x */
 #define BIT_AT(x, pos) ((x[pos>>3]>>(pos&7))&1)
 
+
 char *read_one_entry(char *buf, huffman_entry *entry)
 {
     /* Read one huffman entry from buf, returning the advanced buf pointer.
@@ -29,7 +30,7 @@ char *read_one_entry(char *buf, huffman_entry *entry)
         entry->code = (entry->code<<1) | BIT_AT(p, i);
     }    
     p += (entry->n_bits+7)>>3;
-    printf("Read %d bits, code %d, token %s %p\n", entry->n_bits, entry->code, entry->token_string, entry->token_string);
+    printf("Read %d bits, code %d, len %d, token %s %p\n", entry->n_bits, entry->code, entry->token_string_len, entry->token_string, entry->token_string);
     return p;    
 }
 
@@ -45,10 +46,10 @@ char *read_huffman_table(char *buf, huffman_table *table)
     table->n_entries = ((uint32_t*) buf)[0];
     buf += sizeof(uint32_t);
     /* allocate space for the entries */
-    table->entries = malloc(sizeof(huffman_entry*)*(table->n_entries));
+    table->entries = malloc(sizeof(huffman_entry*)*(table->n_entries));    
     /* read each entry */
     for (i=0; i<table->n_entries; i++) {
-        entry = malloc(sizeof(huffman_entry));
+        entry = malloc(sizeof(huffman_entry));        
         buf = read_one_entry(buf, entry);
         table->entries[i] = entry;
     }
@@ -77,12 +78,12 @@ huffman_buffer *read_huffman(char *buf)
         return NULL;
     }
     buf += 4;
-    table = malloc(sizeof(huffman_table));
+    table = malloc(sizeof(huffman_table));    
     buf = read_huffman_table(buf, table);
 
     /* Now buf points to the compressed data. 
     Create a huffman_buffer structure and return it */
-    huffman_buffer *buffer = malloc(sizeof(buffer));
+    huffman_buffer *buffer = malloc(sizeof(huffman_buffer));    
     buffer->n_bits = ((uint32_t*)buf)[0];    
     buf += sizeof(uint32_t);
     buffer->table = table;
