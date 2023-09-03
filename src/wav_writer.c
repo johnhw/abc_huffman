@@ -85,7 +85,7 @@ void finalise_wav(wav_context *ctx)
     if rest=1, the note is silent.  */
 void write_note(wav_context *wav, uint8_t note, uint32_t duration_us, uint8_t rest)
 {
-    uint64_t n_samples = duration_us*wav->sample_rate/100000;    
+    uint64_t n_samples = (duration_us/1000)*wav->sample_rate/1000;    
     uint32_t hz = midi_to_hz(note);
     uint32_t cycle = wav->sample_rate/hz;
     uint32_t i;
@@ -99,7 +99,7 @@ void write_note(wav_context *wav, uint8_t note, uint32_t duration_us, uint8_t re
         }
         
         
-        sample = (on && !rest) ? 1024 : 0;
+        sample = (on && !rest) ? 8192 : 0;
         write_u16(wav->f, sample);        
         wav->n_samples++; 
     }    

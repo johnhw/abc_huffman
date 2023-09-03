@@ -45,7 +45,7 @@ char *read_huffman_table(char *buf, huffman_table *table)
     table->n_entries = ((uint32_t*) buf)[0];
     buf += sizeof(uint32_t);
     /* allocate space for the entries */
-    table->entries = malloc(sizeof(huffman_entry*)*table->n_entries);
+    table->entries = malloc(sizeof(huffman_entry*)*(table->n_entries));
     /* read each entry */
     for (i=0; i<table->n_entries; i++) {
         entry = malloc(sizeof(huffman_entry));

@@ -23,7 +23,7 @@
 #define EVENT_KEY 5
 #define EVENT_TUNE_START 6
 #define EVENT_TUNE_END 7
-
+#define EVENT_BAR_DURATION 8
 
 
 /* Musical data (chords, keys, modes) */

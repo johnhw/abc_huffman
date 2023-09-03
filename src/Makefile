@@ -5,7 +5,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -g -std=c99 -pedantic
 
 # Source files
-SRCS = huffman.c huffman_tunes.c abc_tests.c music_data.c wav_writer.c
+SRCS = huffman.c huffman_tunes.c abc_tests.c music_data.c wav_writer.c note_writer.c
 
 # Object files
 OBJS = $(SRCS:.c=.o)

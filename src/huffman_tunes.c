@@ -163,12 +163,10 @@ void trigger_note(tune_context *context, int rest)
     context->note_end_time = context->time + context->current_duration;
     if(!rest)
     {
-        EVENT(context, EVENT_NOTE);
-        printf("%d, %d\n", context->current_note, context->current_duration);
+        EVENT(context, EVENT_NOTE);        
     }
     else
-    {
-        printf("%d, %d\n", 0, context->current_duration);
+    {        
         EVENT(context, EVENT_REST);
     }
 }
@@ -193,7 +191,6 @@ void parse_tune(huffman_buffer *h_buffer, event_callback_type callback)
     else 
         ctx->event_callback = debug_callback;
 
-    printf("Duration %d\n", ctx->current_duration);
     EVENT(ctx, EVENT_TUNE_START);
     while(peek_symbol(h_buffer)!=nl) {
         uint32_t symbol = read_symbol(h_buffer);
@@ -258,7 +255,8 @@ void decode_token(tune_context *context, char *token)
         case '^':
             /* Bar duration */
             context->meta->bar_duration = atoi(p);
-            context->current_duration = context->meta->bar_duration * BASE_DURATION;                      
+            context->current_duration = context->meta->bar_duration * BASE_DURATION;      
+            EVENT(context, EVENT_BAR_DURATION);                
             break;
         case '%':
             /* Meter */            

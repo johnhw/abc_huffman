@@ -44,8 +44,7 @@ function update_state(seq, tracked_state, note, duration, is_rest)
         n, d = reduce(duration, tracked_state.duration)    
         if n~=1 or d~=1 then 
              table.insert(seq, '/'..n.."/"..d)                            
-        end        
-        -- print("duration changed from "..tracked_state.duration.." to "..duration.." ratio "..n.."/"..d)
+        end                
         tracked_state.duration = tracked_state.duration * n / d        
 
     end    
@@ -258,9 +257,9 @@ function code_stream_tune(seq, tracked_state, stream)
                 table.insert(seq, '#'..v.chord.root..v.chord.chord_type)                
                 
             elseif v.event=='note'  then                                                                
-                update_state(seq, tracked_state, v.note.play_pitch , v.note.play_duration, false)                
-            elseif v.event=='rest' then                             
-                update_state(seq, tracked_state, 0, v.note.play_duration , true)                    
+                update_state(seq, tracked_state, v.note.play_pitch , v.duration, false)                               
+            elseif v.event=='rest' then                                             
+                update_state(seq, tracked_state, 0, math.floor(v.duration/1000), true)                    
             elseif v.event=='timing_change' then                       
                     tracked_state.bar_length = math.floor(v.timing.bar_length)
             

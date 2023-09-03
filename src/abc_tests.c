@@ -4,6 +4,7 @@
 #include "huffman.h"
 #include "huffman_tunes.h"
 void wav_callback(tune_context *ctx, uint32_t event_code);
+void note_callback(tune_context *ctx, uint32_t event_code);
 
 void dump_tune(huffman_buffer *h_buffer)
 {
@@ -51,7 +52,7 @@ int main(int argc, char **argv)
     printf("Compressed data size: %d\n", h_buffer->n_bits);
     uint32_t i;
     for(i=0; i<h_buffer->table->n_entries; i++) {
-         printf("%s (%p) %d %d\n", h_buffer->table->entries[i]->token_string, h_buffer->table->entries[i]->token_string, h_buffer->table->entries[i]->n_bits, h_buffer->table->entries[i]->code);
+         printf("%s %d %d\n", h_buffer->table->entries[i]->token_string,  h_buffer->table->entries[i]->n_bits, h_buffer->table->entries[i]->code);
     }
 
     /* Decode all of the symbols until we reach the end of the buffer */
