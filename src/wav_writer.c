@@ -7,6 +7,8 @@ with plain square wave oscillators for notes */
 #include <string.h>
 #include <math.h>
 #include "huffman_tunes.h"
+#include "music_data.h"
+#include "binary.h"
 
 typedef struct wav_context
 {
@@ -17,29 +19,7 @@ typedef struct wav_context
     uint32_t n_samples;
 } wav_context;
 
-void write_bytes(FILE *f, void *buf, uint32_t n_bytes)
-{
-    /* Write n_bytes to the file */
-    fwrite(buf, n_bytes, 1, f);
-}
 
-void write_u8(FILE *f, uint8_t val)
-{
-    /* Write a uint8_t to the file */
-    write_bytes(f, &val, 1);
-}
-
-void write_u16(FILE *f, uint16_t val)
-{
-    /* Write a uint16_t to the file */
-    write_bytes(f, &val, 2);
-}
-
-void write_u32(FILE *f, uint32_t val)
-{
-    /* Write a uint32_t to the file */
-    write_bytes(f, &val, 4);
-}
 
 void write_header(wav_context *ctx)
 {
@@ -81,29 +61,33 @@ void finalise_wav(wav_context *ctx)
     free(ctx);
 }
 
+/* Constant to increase frequency resolution; otherwise
+roundoff will introduce detuning errors at high pitches */
+#define FREQ_COUNTER 4096
+
 /* Write a note to the WAV file, using a square wave oscillator.
     if rest=1, the note is silent.  */
 void write_note(wav_context *wav, uint8_t note, uint32_t duration_us, uint8_t rest)
 {
     uint64_t n_samples = (duration_us/1000)*wav->sample_rate/1000;    
     uint32_t hz = midi_to_hz(note);
-    uint32_t cycle = wav->sample_rate/hz;
-    uint32_t i;
+    uint32_t cycle = FREQ_COUNTER*wav->sample_rate/hz;
+    uint32_t duty_cycle = cycle/2;
+    uint32_t i, k;
     uint8_t on = 1;
     uint16_t sample;
-    
 
+    k = 0;
     for(i=0; i<n_samples; i++) {
-        if(i%cycle==0) {
-            on = !on;
+        if(k>=cycle) {
+            k -= cycle;            
         }
-        
-        
+        on = (k>0 && k<duty_cycle) ? 1 : 0;
         sample = (on && !rest) ? 8192 : 0;
         write_u16(wav->f, sample);        
         wav->n_samples++; 
-    }    
-    //printf("Note %d %d %d %d\n", note, duration_us, rest, wav->n_samples);
+        k += FREQ_COUNTER;
+    }        
 }
 
 

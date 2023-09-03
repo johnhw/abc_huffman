@@ -5,6 +5,7 @@
 #include <math.h>
 #include "huffman.h"
 #include "huffman_tunes.h"
+#include "music_data.h"
 
 
 /* Tune related functions */
@@ -15,11 +16,6 @@ tune_context context;
 /* Tune index; element 0 is count of tunes, subsequent elements are bit offsets */
 uint32_t *tune_index;
 
-uint32_t midi_to_hz(uint8_t note)
-{
-    /* Convert a MIDI note number to a frequency in Hz */
-    return (uint32_t)(440.0*pow(2, (note-A440)/12.0));
-}
 
 uint32_t *create_tune_index(huffman_buffer *buffer)
 {

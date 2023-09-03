@@ -35,9 +35,9 @@ typedef struct huffman_buffer
         [N byte len of string:u8] [K bit width of code:u8] [string:u8*N] [code padded to byte width:u8*|`K/8`|]
 */
 
-char *read_one_entry(char *buf, huffman_entry *entry);
-char *read_huffman_table(char *buf, huffman_table *table);
-huffman_buffer *read_huffman(char *buf);
+uint8_t *read_one_entry(uint8_t *buf, huffman_entry *entry);
+uint8_t *read_huffman_table(uint8_t *buf, huffman_table *table);
+huffman_buffer *read_huffman(uint8_t *buf);
 void reset_buffer(huffman_buffer *buffer);
 uint32_t read_symbol(huffman_buffer *buffer);
 uint32_t peek_symbol(huffman_buffer *buffer);

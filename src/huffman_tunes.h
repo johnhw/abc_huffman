@@ -7,7 +7,7 @@
 #define EVENT(context, event_code) if(context->event_callback) context->event_callback(context, event_code)
 
 #define BASE_NOTE 69 /* A440 */
-#define A440 69
+
 #define TUNE_TERMINATOR "\n"
 #define STRING_TERMINATOR "*"
 #define STRING_TOKENS 1
@@ -25,25 +25,8 @@
 #define EVENT_TUNE_END 7
 #define EVENT_BAR_DURATION 8
 
+struct chord_type;
 
-/* Musical data (chords, keys, modes) */
-
-typedef struct {
-    char *note_name;
-    int offset;
-} note_offset;
-
-typedef struct 
-{
-    char *chord_type;
-    int chord[16];
-} chord_type;
-
-typedef struct 
-{
-    char *mode_name;
-    int mode[7];
-} mode_type;
 
 /* Tune data */
 
@@ -55,7 +38,7 @@ typedef struct tune_metadata
     uint8_t meter_numerator;
     char key[5]; 
     char chord[7];
-    chord_type *chord_type;   
+    struct chord_type *chord_type;   
     uint32_t bar_duration; /* Duration of a bar in microseconds */
 } tune_metadata;
 
